@@ -7,6 +7,7 @@ class Environment:
         self.agent_position = np.array(start)
         self.actions = np.array(
             [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]])  # possiveis movimentos do agente
+            
     def initial_percepts(self):
         available = []
         for a in self.actions:
@@ -14,9 +15,11 @@ class Environment:
             if (0 <= pos[0] < self.map.shape[0]) and (0 <= pos[1] < self.map.shape[1]) and self.map[pos[0]][
                 pos[1]] == 0:  # Limite do agente para não sair fora do mapa
                 available.append(pos)
+                
         return {'available_positions': available,
                 'position': self.agent_position,
                 'goal': self.goal}
+                
     def signal(self, action):
         self.agent_position = action['go_to']
         available = []
@@ -25,11 +28,70 @@ class Environment:
             if (0 <= pos[0] < self.map.shape[0]) and (0 <= pos[1] < self.map.shape[1]) and self.map[pos[0]][
                 pos[1]] == 0:
                 available.append(pos)
+                
         return {'available_positions': available,
                 'position': self.agent_position,
                 'goal': self.goal}
+###
+     def __init__(self, env):
 
-class AgentGuloso:
+        self.belief_state = env.initial_percepts()
+        self.env = env
+    def act(self):
+     path = self.remove_from_frontier()
+        viable_neighbors = self.visit_neighbours(path) # vizinhos viaveis
+        self.update_frontier(path, viable_neighbors) # atualiza a fronteira
+
+    def visit_neighbours(self, path):
+        
+        action = {'visit_position': path[-1], 'path': path} # Visita o ultimo nó 
+        self.percepts = self.env.signal(action) # The agente sends a position and the full path to the environment, the environment can plot the path in the room
+       
+        self.visited.append(path[-1]) # Adiciona o nó visitado 
+
+        # pega os vizinhos viaveis e seleciona um vizinho que ainda nao foi visitado. 
+        
+        return self.percepts['neighbors']
+    def remove_from_frontier(self):
+        return self.frontier.pop(0)
+
+    def update_frontier(self, path, viable_neighbors): #atualiza a fronteira
+       
+        if viable_neighbors:          
+            visit = viable_neighbors[np.random.randint(0, len(viable_neighbors))] # seleciona vizinho aleatório 
+           
+            self.frontier = [path + [visit]] + self.frontier 
+    def run(self):
+       
+        while (self.percepts['current_position'] != self.percepts['target']).any() and self.frontier: #mantem o agente rodando ate encontrar o objetivo
+            self.act()
+        print(self.percepts['current_position'])
+
+   class AgentGuloso(environment):
+
+    def __init__(self, env):
+        PathFinderAgent.__init__(self, env)
+        self.frontier = []
+
+        initial_pos = self.percepts['current_position']
+
+        h = distance.euclidean(initial_pos, self.percepts['target'])
+
+        heap.heappush(self.frontier, HeapPath(h, [initial_pos]))
+
+    def remove_from_frontier(self):
+        return heap.heappop(self.frontier).get_path()
+
+    def update_frontier(self, path, viable_neighbors):
+        if viable_neighbors:
+            for neighbor in viable_neighbors:
+                continue
+
+                new_path = path + [neighbor]
+
+                h = distance.euclidean(neighbor, self.percepts['target'])
+
+                heap.heappush(self.frontier, HeapPath(h, new_path))
     
         return []
 
@@ -41,7 +103,7 @@ if __name__ == "__main__":
 
     env = Environment(map, [0, 0], [2, 2])
 
-    ag = AgentDFS(env)
+    ag = AgentGuloso(env)
 
     path = ag.act()
 
